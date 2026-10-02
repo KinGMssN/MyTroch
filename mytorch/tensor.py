@@ -10,11 +10,25 @@ class Tensor:
     def __repr__(self):
         return "Tensor(" + str(self.data) + ")"
 
+    def _unbroadcast(self, grad, shape):
+        while grad.ndim > len(shape):
+            grad = grad.sum(axis=0)
+
+        for axis in range(len(shape)):
+            size = shape[axis]
+
+            if size == 1:
+                grad = grad.sum(axis=axis, keepdims=True)
+
+        return grad
+
     def __add__(self, other):
         out = Tensor(self.data + other.data)
         out._prev =  {self, other}
 
         def _backward():
+            self_grad = self._unbroadcast(out.grad , self.data.shape)
+            other_grad = self._unbroadcast(out.grad, other.data.shape)
             if self.grad is None:
                 self.grad = out.grad
             else:
@@ -31,10 +45,13 @@ class Tensor:
 
 
     def __sub__(self, other):
+
         out = Tensor(self.data - other.data)
         out._prev = {self, other}
 
         def _backward():
+            self_grad = self._unbroadcast(out.grad, self.data.shape)
+            other_grad = self._unbroadcast(-out.grad, other.data.shape)
             if self.grad is None:
                 self.grad = out.grad
             else :
@@ -51,10 +68,14 @@ class Tensor:
 
 
     def __mul__(self, other):
+
         out = Tensor(self.data * other.data)
         out._prev = {self, other}
 
         def _backward():
+            self_grad = self._unbroadcast(other.data * out.grad, self.data.shape)
+            other_grad = self._unbroadcast(self.data * out.grad, other.data.shape)
+
             if self.grad is None:
                 self.grad = other.data*out.grad
             else:
@@ -74,6 +95,9 @@ class Tensor:
         out._prev = {self, other}
 
         def _backward():
+            self_grad = self._unbroadcast(out.grad*(1/other.data), self.data.shape)
+            other_grad = self._unbroadcast(-out.grad*self.data*(1/(other.data*other.data)), other.data.shape)
+
             if self.grad is None:
                 self.grad = out.grad*(1/other.data)
             else :
@@ -92,6 +116,8 @@ class Tensor:
         out._prev = {self, other}
 
         def _backward():
+            self_grad = self._unbroadcast(out.grad*other.data*(self.data**(other.data-1)), self.data.shape)
+            other_grad = self._unbroadcast(out.grad*(self.data**other.data)*np.log(self.data), other.data.shape)
             if self.grad is None:
                 self.grad = out.grad*other.data*(self.data**(other.data-1))
             else:
