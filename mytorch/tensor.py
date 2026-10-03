@@ -1,6 +1,8 @@
 import numpy as np
 
+
 class Tensor:
+    #Tesnor Basic props
     def __init__(self, data):
         self.data = np.array(data)
         self.grad = None
@@ -10,19 +12,12 @@ class Tensor:
     def __repr__(self):
         return "Tensor(" + str(self.data) + ")"
 
-    def _unbroadcast(self, grad, shape):
-        while grad.ndim > len(shape):
-            grad = grad.sum(axis=0)
 
-        for axis in range(len(shape)):
-            size = shape[axis]
-
-            if size == 1:
-                grad = grad.sum(axis=axis, keepdims=True)
-
-        return grad
 
     def __add__(self, other):
+
+        other = self._ensure_tensor(other)
+
         out = Tensor(self.data + other.data)
         out._prev =  {self, other}
 
@@ -30,14 +25,14 @@ class Tensor:
             self_grad = self._unbroadcast(out.grad , self.data.shape)
             other_grad = self._unbroadcast(out.grad, other.data.shape)
             if self.grad is None:
-                self.grad = out.grad
+                self.grad = self_grad
             else:
-                self.grad = self.grad + out.grad
+                self.grad = self.grad + self_grad
 
             if other.grad is None:
-                other.grad = out.grad
+                other.grad = other_grad
             else:
-                other.grad = other.grad + out.grad
+                other.grad = other.grad + other_grad
 
         out._backward = _backward
 
@@ -46,6 +41,8 @@ class Tensor:
 
     def __sub__(self, other):
 
+        other = self._ensure_tensor(other)
+
         out = Tensor(self.data - other.data)
         out._prev = {self, other}
 
@@ -53,14 +50,14 @@ class Tensor:
             self_grad = self._unbroadcast(out.grad, self.data.shape)
             other_grad = self._unbroadcast(-out.grad, other.data.shape)
             if self.grad is None:
-                self.grad = out.grad
+                self.grad = self_grad
             else :
-                self.grad = self.grad + out.grad
+                self.grad = self.grad + self_grad
 
             if other.grad is None:
-                other.grad = -out.grad
+                other.grad = other_grad
             else:
-                other.grad = other.grad - out.grad
+                other.grad = other.grad + other_grad
 
         out._backward = _backward
         return out
@@ -68,6 +65,8 @@ class Tensor:
 
 
     def __mul__(self, other):
+
+        other = self._ensure_tensor(other)
 
         out = Tensor(self.data * other.data)
         out._prev = {self, other}
@@ -77,20 +76,23 @@ class Tensor:
             other_grad = self._unbroadcast(self.data * out.grad, other.data.shape)
 
             if self.grad is None:
-                self.grad = other.data*out.grad
+                self.grad = self_grad
             else:
-                self.grad = self.grad + other.data*out.grad
+                self.grad = self.grad + self_grad
 
             if other.grad is None:
-                other.grad = self.data*out.grad
+                other.grad = other_grad
             else :
-                other.grad = other.grad + self.data*out.grad
+                other.grad = other.grad +other_grad
 
         out._backward = _backward
         return out
 
 
     def __truediv__(self, other):
+
+        other = self._ensure_tensor(other)
+
         out = Tensor(self.data / other.data)
         out._prev = {self, other}
 
@@ -99,19 +101,22 @@ class Tensor:
             other_grad = self._unbroadcast(-out.grad*self.data*(1/(other.data*other.data)), other.data.shape)
 
             if self.grad is None:
-                self.grad = out.grad*(1/other.data)
+                self.grad = self_grad
             else :
-                self.grad = self.grad + out.grad*(1/other.data)
+                self.grad = self.grad + self_grad
 
             if other.grad is None:
-                other.grad = -out.grad*self.data*(1/(other.data*other.data))
+                other.grad = other_grad
             else :
-                other.grad = other.grad - out.grad*self.data*(1/(other.data*other.data))
+                other.grad = other.grad + other_grad
 
         out._backward = _backward
         return out
 
     def __pow__(self, other):
+
+        other = self._ensure_tensor(other)
+
         out = Tensor(self.data ** other.data)
         out._prev = {self, other}
 
@@ -119,20 +124,25 @@ class Tensor:
             self_grad = self._unbroadcast(out.grad*other.data*(self.data**(other.data-1)), self.data.shape)
             other_grad = self._unbroadcast(out.grad*(self.data**other.data)*np.log(self.data), other.data.shape)
             if self.grad is None:
-                self.grad = out.grad*other.data*(self.data**(other.data-1))
+                self.grad = self_grad
             else:
-                self.grad = self.grad + out.grad*other.data*(self.data**(other.data-1))
+                self.grad = self_grad
 
             if other.grad is None:
-                other.grad = out.grad*(self.data**other.data)*np.log(self.data)
+                other.grad = other_grad
             else :
-                other.grad = other.grad  + out.grad*(self.data**other.data)*np.log(self.data)
+                other.grad = other_grad
 
         out._backward = _backward
         return out
 
+
+
+    #Reverse Operations
+
     def backward(self):
         # Topological sort/order of the computation graph
+
         topo = []
         visited = set()
 
@@ -152,3 +162,38 @@ class Tensor:
 
         for tensor in reversed(topo):
             tensor._backward()
+
+    def _unbroadcast(self, grad, shape):
+        while grad.ndim > len(shape):
+            grad = grad.sum(axis=0)
+
+        for axis in range(len(shape)):
+            size = shape[axis]
+
+            if size == 1:
+                grad = grad.sum(axis=axis, keepdims=True)
+
+        return grad
+
+    #Helper Functions
+    def _ensure_tensor(self,other):
+        if not isinstance(other, Tensor):
+            Other = Tensor(other)
+        return other
+
+    def __radd__(self,other):
+        return self + other
+
+    def __rmul__(self, other):
+        return self * other
+
+    def __rsub__(self, other):
+        return other - self
+
+    def __rtruediv__(self, other):
+        return other / self
+
+    def __rpow__(self, other):
+        other = self._ensure_tensor(other)
+        return other ** self
+
