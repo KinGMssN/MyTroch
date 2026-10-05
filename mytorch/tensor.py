@@ -484,8 +484,301 @@ class Tensor:
         out._prev = {self}
 
         def _backward():
-            grad = -out.grad / (
-                    np.abs(self.data) * np.sqrt(self.data ** 2 - 1)
+            grad = -out.grad / (np.abs(self.data) * np.sqrt(self.data ** 2 - 1))
+
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+
+        return out
+
+    #Hyperbole and inverse
+    def sinh(self):
+        out=Tensor(np.sinh(self.data))
+        out._prev = {self}
+        def _backward():
+            grad = out.grad*np.cosh(self.data)
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+
+        return out
+
+    def cosh(self):
+        out = Tensor(np.cosh(self.data))
+        out._prev = {self}
+        def _backward():
+            grad = out.grad*np.sinh(self.data)
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+
+        return out
+
+    def tanh(self):
+        out = Tensor(np.tanh(self.data))
+        out._prev = {self}
+        def _backward():
+            grad = out.grad*(1 - np.tanh(self.data)**2)
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+
+        return out
+
+    def coth(self):
+        out= Tensor(1/np.tanh(self.data))
+        out._prev = {self}
+        def _backward():
+            grad = -out.grad/np.sinh(self.data)**2
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+
+        return out
+
+    def sech(self):
+        out = Tensor(1/np.cosh(self.data))
+        out._prev = {self}
+        def _backward():
+            grad = -out.grad * out.data * np.tanh(self.data)
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+
+        return out
+
+    def cosech(self):
+        out = Tensor(1 / np.sinh(self.data))
+        out._prev = {self}
+        def _backward():
+            grad = -out.grad * np.cosh(self.data) / np.sinh(self.data)**2
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+
+        return out
+
+    def arcsinh(self):
+        out = Tensor(np.arcsinh(self.data))
+        out._prev = {self}
+
+        def _backward():
+            grad = out.grad / np.sqrt(self.data ** 2 + 1)
+
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+        return out
+
+    def arccosh(self):
+        out = Tensor(np.arccosh(self.data))
+        out._prev = {self}
+
+        def _backward():
+            grad = out.grad / np.sqrt(self.data ** 2 - 1)
+
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+        return out
+
+    def arctanh(self):
+        out = Tensor(np.arctanh(self.data))
+        out._prev = {self}
+
+        def _backward():
+            grad = out.grad / (1 - self.data ** 2)
+
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+        return out
+
+    def arcsech(self):
+        out = Tensor(np.arccosh(1 / self.data))
+        out._prev = {self}
+
+        def _backward():
+            grad = -out.grad / (self.data * np.sqrt(1 - self.data ** 2))
+
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+        return out
+
+    def arccsch(self):
+        out = Tensor(np.arcsinh(1 / self.data))
+        out._prev = {self}
+
+        def _backward():
+            grad = -out.grad / (np.abs(self.data) * np.sqrt(1 + self.data ** 2))
+
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+        return out
+
+    def arccoth(self):
+        out = Tensor(np.arctanh(1 / self.data))
+        out._prev = {self}
+
+        def _backward():
+            grad = out.grad / (1 - self.data ** 2)
+
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+        return out
+
+    #Rounding
+    def ceil(self):
+        out = Tensor(np.ceil(self.data))
+        out._prev = {self}
+
+        def _backward():
+            grad = np.zeros_like(self.data)
+
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+
+        return out
+
+    def floor(self):
+        out = Tensor(np.floor(self.data))
+        out._prev = {self}
+
+        def _backward():
+            grad = np.zeros_like(self.data)
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+
+        return out
+
+    def round(self):
+        out = Tensor(np.round(self.data))
+        out._prev = {self}
+
+        def _backward():
+            grad = np.zeros_like(self.data)
+            if self.grad is None:
+                self.grad = grad
+            else:
+                self.grad = self.grad + grad
+
+        out._backward = _backward
+
+        return out
+    #Comparison
+    def maximum(self, other):
+        other = self._ensure_tensor(other)
+
+        out = Tensor(np.maximum(self.data, other.data))
+        out._prev = {self, other}
+
+        def _backward():
+            self_grad = out.grad * (self.data > other.data)
+            other_grad = out.grad * (other.data > self.data)
+
+            self_grad = self._unbroadcast(self_grad,self.data.shape)
+
+            other_grad = self._unbroadcast(other_grad,other.data.shape)
+
+            if self.grad is None:
+                self.grad = self_grad
+            else:
+                self.grad = self.grad + self_grad
+
+            if other.grad is None:
+                other.grad = other_grad
+            else:
+                other.grad = other.grad + other_grad
+
+        out._backward = _backward
+
+        return out
+
+    def minimum(self, other):
+        other = self._ensure_tensor(other)
+
+        out = Tensor(np.minimum(self.data, other.data))
+        out._prev = {self, other}
+
+        def _backward():
+            self_grad = out.grad * (self.data < other.data)
+            other_grad = out.grad * (other.data < self.data)
+
+            self_grad = self._unbroadcast(self_grad,self.data.shape)
+            other_grad = self._unbroadcast(other_grad,other.data.shape)
+
+            if self.grad is None:
+                self.grad = self_grad
+            else:
+                self.grad = self.grad + self_grad
+            if other.grad is None:
+                other.grad = other_grad
+            else:
+                other.grad = other.grad + other_grad
+
+        out._backward = _backward
+
+        return out
+
+    def clip(self, min_value, max_value):
+        out = Tensor(np.clip(self.data, min_value, max_value))
+        out._prev = {self}
+
+        def _backward():
+            grad = out.grad * (
+                    (self.data > min_value) &
+                    (self.data < max_value)
             )
 
             if self.grad is None:
@@ -496,6 +789,10 @@ class Tensor:
         out._backward = _backward
 
         return out
+
+
+
+
 
     #Reverse Operations
 
